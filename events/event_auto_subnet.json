@@ -1,0 +1,15 @@
+{
+  "RequestType": "Create",
+  "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:SubnetCalculator",
+  "ResponseURL": "https://cloudformation-custom-resource-response-useast1.s3.amazonaws.com/test-response",
+  "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/guid",
+  "RequestId": "unique-id-9012",
+  "ResourceType": "Custom::AutoSubnet",
+  "LogicalResourceId": "ExampleAutoSubnet",
+  "ResourceProperties": {
+    "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:SubnetCalculator",
+    "VpcId": "vpc-0123456789abcdef0",
+    "Subnets": "10.0.1.0/24,10.0.2.0/24,10.0.3.0/24",
+    "AvailabilityZones": "us-east-1a,us-east-1b,us-east-1c"
+  }
+}

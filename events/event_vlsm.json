@@ -1,0 +1,14 @@
+{
+  "RequestType": "Create",
+  "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:SubnetCalculator",
+  "ResponseURL": "https://cloudformation-custom-resource-response-useast1.s3.amazonaws.com/test-response",
+  "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/guid",
+  "RequestId": "unique-id-9012",
+  "ResourceType": "Custom::SubnetVLSM",
+  "LogicalResourceId": "ExampleSubnetVLSM",
+  "ResourceProperties": {
+    "ServiceToken": "arn:aws:lambda:us-east-1:123456789012:function:SubnetCalculator",
+    "Network": "192.168.1.0/24",
+    "Hosts": "100,50,25,10"
+  }
+}

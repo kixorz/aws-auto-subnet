@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Handler: index.handler
+    Runtime: python3.12
+    Timeout: 60
+    MemorySize: 128
+    Architectures:
+      - arm64
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+
+  SubnetCalculatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: subnet_calculator
+
+  SubnetCalculatorLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${SubnetCalculatorFunction}'
+      RetentionInDays: 5
+
+  ExampleSubnetInfo:
+    Type: Custom::SubnetInfo
+    Properties:
+      ServiceToken: !GetAtt SubnetCalculatorFunction.Arn
+      Network: 192.168.1.0/24
+
+  ExampleSubnetSplit1:
+    Type: Custom::SubnetSplit
+    Properties:
+      ServiceToken: !GetAtt SubnetCalculatorFunction.Arn
+      Network: 10.0.0.0/24
+      Count: 4
+
+  ExampleSubnetSplit2:
+    Type: Custom::SubnetSplit
+    Properties:
+      ServiceToken: !GetAtt SubnetCalculatorFunction.Arn
+      Network: 10.0.100.0/24
+      AvailabilityZones:
+        Fn::GetAZs: !Ref AWS::Region
+
+  ExampleSubnetVLSM:
+    Type: Custom::SubnetVLSM
+    Properties:
+      ServiceToken: !GetAtt SubnetCalculatorFunction.Arn
+      Network: 192.168.1.0/24
+      Hosts: "100,50,25,10"
+
+  AutoSubnetLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: '/'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+
+  AutoSubnetPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AutoSubnet
+      Roles:
+        - !Ref AutoSubnetLambdaRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Subnets
+            Resource: "*"
+            Action:
+              - ec2:DescribeSubnets
+              - ec2:CreateSubnet
+              - ec2:DeleteSubnet
+              - ec2:CreateTags
+            Effect: Allow
+
+  AutoSubnetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auto_subnet
+      Role: !GetAtt AutoSubnetLambdaRole.Arn
+    DependsOn: AutoSubnetPolicy
+
+  AutoSubnetLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AutoSubnetFunction}'
+      RetentionInDays: 5
+
+  ExampleAutoSubnet1:
+    Type: Custom::AutoSubnet
+    Properties:
+      ServiceToken: !GetAtt AutoSubnetFunction.Arn
+      VpcId: !GetAtt VPC.VpcId
+      Subnets:
+        - 10.0.1.0/24
+        - 10.0.2.0/24
+        - 10.0.3.0/24
+      AvailabilityZones:
+        - us-east-1a
+        - us-east-1b
+        - us-east-1c
+
+  ExampleAutoSubnet2:
+    Type: Custom::AutoSubnet
+    Properties:
+      ServiceToken: !GetAtt AutoSubnetFunction.Arn
+      VpcId: !GetAtt VPC.VpcId
+      Subnets: !GetAtt ExampleSubnetSplit2.Subnets
+      AvailabilityZones:
+        Fn::GetAZs: !Ref AWS::Region
+
+Outputs:
+  # Created subnets
+  Subnet1:
+    Value: !Select [ 0, !GetAtt ExampleAutoSubnet1.SubnetIds ]
+  Subnet2:
+    Value: !Select [ 1, !GetAtt ExampleAutoSubnet1.SubnetIds ]
+  Subnet3:
+    Value: !Select [ 2, !GetAtt ExampleAutoSubnet1.SubnetIds ]
+
+  # SubnetInfo outputs
+  InfoNetworkAddress:
+    Value: !GetAtt ExampleSubnetInfo.NetworkAddress
+  InfoBroadcastAddress:
+    Value: !GetAtt ExampleSubnetInfo.BroadcastAddress
+  InfoFirstHost:
+    Value: !GetAtt ExampleSubnetInfo.FirstUsableHost
+  InfoLastHost:
+    Value: !GetAtt ExampleSubnetInfo.LastUsableHost
+  InfoSubnetMask:
+    Value: !GetAtt ExampleSubnetInfo.SubnetMask
+  InfoCidr:
+    Value: !GetAtt ExampleSubnetInfo.CidrNotation
+  InfoUsableHosts:
+    Value: !GetAtt ExampleSubnetInfo.UsableHosts
+
+  # SubnetSplit outputs
+  SplitSubnetCount:
+    Value: !GetAtt ExampleSubnetSplit1.SubnetCount
+  SplitSubnet1Cidr:
+    Value: !GetAtt ExampleSubnetSplit1.Subnet1Cidr
+  SplitSubnet2Cidr:
+    Value: !GetAtt ExampleSubnetSplit1.Subnet2Cidr
+  SplitSubnet3Cidr:
+    Value: !GetAtt ExampleSubnetSplit1.Subnet3Cidr
+  SplitSubnet4Cidr:
+    Value: !GetAtt ExampleSubnetSplit1.Subnet4Cidr
+
+  # SubnetVLSM outputs
+  VlsmSubnetCount:
+    Value: !GetAtt ExampleSubnetVLSM.SubnetCount
+  VlsmWastedAddresses:
+    Value: !GetAtt ExampleSubnetVLSM.WastedAddresses
+  VlsmSubnet1Cidr:
+    Value: !GetAtt ExampleSubnetVLSM.Subnet1Cidr
+  VlsmSubnet2Cidr:
+    Value: !GetAtt ExampleSubnetVLSM.Subnet2Cidr
