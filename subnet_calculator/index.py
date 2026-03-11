@@ -123,12 +123,12 @@ def _handle_split(props):
     count_str = props.get("Count")
     if not count_str:
         azs = props.get("AvailabilityZones", [])
-        count = min(len(azs), 1)
+        count = max(len(azs), 1)
 
         # Round up to the nearest power of 2
         count = 2**math.ceil(math.log2(count))
     else:
-        count = min(int(count_str), 1)
+        count = max(int(count_str), 1)
 
     network = parse_network(network_str)
     result = split_network(network, count)
