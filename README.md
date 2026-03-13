@@ -6,7 +6,7 @@ This project provides a set of **CloudFormation Custom Resources** that simplify
 
 ### 🚀 Features
 
-*   **AutoSubnet** (`Custom::AutoSubnet`): A specialized provisioner that creates and manages real EC2 Subnets in your VPC using calculated CIDR blocks.
+*   **AutoSubnet** (`Custom::AutoSubnet`): A specialized provisioner that creates and manages real EC2 Subnets in your VPC using calculated CIDR blocks. Supports optional route table association and public IP mapping.
 *   **Subnet Info** (`Custom::SubnetInfo`): Retrieve detailed network properties (broadcast, wildcard, usable range) from any CIDR.
 *   **Subnet Split** (`Custom::SubnetSplit`): Automatically divide a parent network into equal-sized subnets.
 *   **VLSM Allocation** (`Custom::SubnetVLSM`): Optimize address space by allocating subnets based on specific host count requirements.
@@ -54,6 +54,25 @@ MySubnets:
       - "10.0.2.0/24"
 ```
 
+#### Subnet Provisioning with Route Table and Public IP
+Associate subnets with a route table and enable automatic public IP assignment.
+
+```yaml
+MySubnets:
+  Type: Custom::AutoSubnet
+  Properties:
+    ServiceToken: !GetAtt AutoSubnetFunction.Arn
+    VpcId: !Ref MyVPC
+    AvailabilityZones:
+      - !Sub "${AWS::Region}a"
+      - !Sub "${AWS::Region}b"
+    Subnets:
+      - "10.0.1.0/24"
+      - "10.0.2.0/24"
+    RouteTableId: !Ref MyPublicRouteTable
+    MapPublicIpOnLaunch: "true"
+```
+
 #### Calculate Subnet Details
 Get information about a specific network block.
 
@@ -99,7 +118,7 @@ The resources expose the following attributes via `Fn::GetAtt`:
 
 | Resource | Key Attributes |
 | :--- | :--- |
-| **AutoSubnet** | `SubnetIds` (list of created Subnet IDs) |
+| **AutoSubnet** | `SubnetIds` (list of created Subnet IDs) — Properties: `VpcId`, `Subnets`, `AvailabilityZones`, `RouteTableId` (optional), `MapPublicIpOnLaunch` (optional, default `"false"`) |
 | **SubnetInfo** | `NetworkAddress`, `BroadcastAddress`, `FirstUsableHost`, `LastUsableHost`, `SubnetMask`, `PrefixLength`, `TotalAddresses`, `UsableHosts`, `IpClass`, `IsPrivate` |
 | **SubnetSplit** | `Subnet{N}Cidr`, `Subnet{N}NetworkAddress`, `Subnet{N}FirstHost`, `Subnet{N}LastHost`, `SubnetCount` |
 | **SubnetVLSM** | `Subnet{N}Cidr`, `Subnet{N}UsableHosts`, `WastedAddresses`, `SubnetCount` |
